@@ -1,18 +1,12 @@
-use embedded_svc::{
-    http::client::Client as HttpClient,
-    io::Write,
-    utils::io,
-    wifi::{AuthMethod, ClientConfiguration, Configuration},
-};
+use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_hal::prelude::Peripherals;
-use esp_idf_hal::sys::esp_wifi_set_max_tx_power;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
 use esp_idf_svc::log::EspLogger;
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition};
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use log::{error, info};
+use log::info;
 
 mod critical_section;
 mod net;

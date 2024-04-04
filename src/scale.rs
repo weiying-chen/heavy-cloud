@@ -11,13 +11,12 @@ use loadcell::{
     LoadCell,
 };
 
-const LOADCELL_STABLE_READINGS: usize = 10; // Number of readings to consider for stability
-const LOADCELL_LOOP_DELAY_US: u32 = 10000; // Delay between readings in microseconds
-                                           // const LOADCELL_READY_DELAY_US: u32 = 1000;
+const LOADCELL_STABLE_READINGS: usize = 10;
+const LOADCELL_LOOP_DELAY_US: u32 = 10000;
+
 pub type LoadSensor<'a, SckPin, DtPin> =
     HX711<PinDriver<'a, SckPin, Output>, PinDriver<'a, DtPin, Input>, Ets>;
 
-/// Loadcell struct
 pub struct Scale<'a, SckPin, DtPin>
 where
     DtPin: Peripheral<P = DtPin> + Pin + InputPin,
@@ -73,6 +72,7 @@ where
         Ok(rounded_reading)
     }
 
+    #[allow(dead_code)]
     pub fn wait_stable(&mut self) {
         let mut readings: VecDeque<f32> = VecDeque::with_capacity(LOADCELL_STABLE_READINGS);
 
