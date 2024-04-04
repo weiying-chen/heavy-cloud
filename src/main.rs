@@ -56,6 +56,7 @@ fn main() -> anyhow::Result<()> {
     let mut iterations = 0;
 
     loop {
+        log::info!("Waiting for the scale to be ready...");
         if scale.is_ready() {
             log::info!("Iteration {}", iterations);
 
