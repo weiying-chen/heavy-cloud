@@ -51,13 +51,14 @@ impl<'a> Wifi<'a> {
     }
 }
 
-pub struct Http {
+pub struct Http<'a> {
     client: HttpClient<EspHttpConnection>,
+    headers: &'a [(&'a str, &'a str)], // Borrowed slice with a lifetime
 }
 
-impl Http {
+impl<'a> Http<'a> {
     // Constructor that initializes the HTTP client with configuration
-    pub fn new() -> Result<Self> {
+    pub fn new(headers: &'a [(&'a str, &'a str)]) -> Result<Self> {
         let config = &HttpConfiguration {
             buffer_size: Some(1024),
             buffer_size_tx: Some(1024),
@@ -67,46 +68,70 @@ impl Http {
 
         let client = HttpClient::wrap(EspHttpConnection::new(config)?);
 
-        Ok(Self { client })
+        Ok(Self { client, headers })
     }
 
-    // Method to perform a POST request
-    pub fn post_supabase(
-        &mut self,
-        payload: &[u8],
-        supabase_key: &str,
-        supabase_url: &str,
-    ) -> Result<()> {
-        let content_length_header = format!("{}", payload.len());
-
-        let headers = [
-            ("apikey", supabase_key),
-            ("Authorization", &format!("Bearer {}", supabase_key)),
-            ("Content-Type", "application/json"),
-            ("Prefer", "return=representation"),
-            ("Content-Length", &content_length_header),
-        ];
-
-        let mut request = self.client.post(supabase_url, &headers)?;
+    pub fn post(&mut self, payload: &[u8], url: &str) -> Result<()> {
+        let mut request = self.client.post(url, self.headers)?; // Use the passed URL and headers directly
 
         request.write_all(payload)?;
         request.flush()?;
 
-        info!("-> POST {}", supabase_url);
+        info!("-> POST {}", url);
 
         let mut response = request.submit()?;
         let status = response.status();
 
         info!("<- {}", status);
 
-        let mut buf = [0u8; 1024];
+        let mut buf = [0u8; 1024]; // Buffer for reading the response
         let bytes_read =
             embedded_svc::utils::io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
 
         info!("Read {} bytes", bytes_read);
 
+        // Ensuring all data is read from the response
         while response.read(&mut buf)? > 0 {}
 
         Ok(())
     }
+
+    // pub fn post_supabase(
+    //     &mut self,
+    //     payload: &[u8],
+    //     supabase_key: &str,
+    //     supabase_url: &str,
+    // ) -> Result<()> {
+    //     let content_length_header = format!("{}", payload.len());
+
+    //     let headers = [
+    //         ("apikey", supabase_key),
+    //         ("Authorization", &format!("Bearer {}", supabase_key)),
+    //         ("Content-Type", "application/json"),
+    //         ("Prefer", "return=representation"),
+    //         ("Content-Length", &content_length_header),
+    //     ];
+
+    //     let mut request = self.client.post(supabase_url, &headers)?;
+
+    //     request.write_all(payload)?;
+    //     request.flush()?;
+
+    //     info!("-> POST {}", supabase_url);
+
+    //     let mut response = request.submit()?;
+    //     let status = response.status();
+
+    //     info!("<- {}", status);
+
+    //     let mut buf = [0u8; 1024];
+    //     let bytes_read =
+    //         embedded_svc::utils::io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
+
+    //     info!("Read {} bytes", bytes_read);
+
+    //     while response.read(&mut buf)? > 0 {}
+
+    //     Ok(())
+    // }
 }

@@ -48,7 +48,15 @@ fn round() -> anyhow::Result<()> {
 
     // initi http
 
-    let mut http = Http::new()?;
+    let headers = [
+        ("apikey", SUPABASE_KEY),
+        ("Authorization", &format!("Bearer {}", SUPABASE_KEY)),
+        ("Content-Type", "application/json"),
+        ("Prefer", "return=representation"),
+        // ("Content-Length", &content_length_header),
+    ];
+
+    let mut http = Http::new(&headers)?;
     let mut iterations = 0;
 
     loop {
@@ -76,7 +84,11 @@ fn round() -> anyhow::Result<()> {
 
             log::info!("Http: starting...");
 
-            http.post_supabase(payload_bytes, SUPABASE_KEY, SUPABASE_URL)?;
+            // let content_length_header = format!("{}", payload_bytes.len());
+
+            // Maybe set the url in new() like axios
+
+            http.post(payload_bytes, SUPABASE_URL)?;
 
             log::info!("Http: success!");
         }
@@ -92,7 +104,7 @@ fn round() -> anyhow::Result<()> {
 
     info!("Shutting down in 5s...");
 
-    std::thread::sleep(core::time::Duration::from_secs(5));
+    FreeRtos::delay_ms(5000u32);
 
     Ok(())
 }
