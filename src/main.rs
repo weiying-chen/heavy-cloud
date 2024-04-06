@@ -17,10 +17,27 @@ const SUPABASE_URL: &str = env!("SUPABASE_URL");
 const LOAD_SENSOR_SCALING: f32 = 0.0027;
 
 fn main() -> anyhow::Result<()> {
+    round()?;
+
+    Ok(())
+}
+
+fn round() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
+
+    // init scale
+
+    let dt = peripherals.pins.gpio2;
+    let sck = peripherals.pins.gpio3;
+    let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
+
+    scale.tare(32);
+
+    // init wifi
+
     let mut wifi = Wifi::new(peripherals.modem)?;
 
     log::info!("Wifi: starting...");
@@ -29,31 +46,32 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("Wifi: success!");
 
+    // initi http
+
     let mut http = Http::new()?;
-    let dt = peripherals.pins.gpio2;
-    let sck = peripherals.pins.gpio3;
-    let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
-
-    scale.tare(32);
-
     let mut iterations = 0;
 
     loop {
         log::info!("Scale: starting...");
+
         if scale.is_ready() {
             log::info!("Scale: success!");
             log::info!("Iteration {}", iterations);
+
+            // read scale
 
             let rounded_reading = scale.read_rounded().unwrap();
             let message = format!("Weight: {} g", rounded_reading);
 
             log::info!("{}", message);
 
+            // send reading to supabase
+
             let payload = serde_json::json!({
                 "content": message
             });
 
-            let payload_str = serde_json::to_string(&payload).unwrap();
+            let payload_str = serde_json::to_string(&payload)?;
             let payload_bytes = payload_str.as_bytes();
 
             log::info!("Http: starting...");
