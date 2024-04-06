@@ -1,16 +1,13 @@
-use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::hal::delay::FreeRtos;
-use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
 use esp_idf_svc::log::EspLogger;
-use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
-use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition};
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::info;
 
 mod critical_section;
 mod net;
 mod scale;
+use crate::net::Wifi;
 use crate::scale::Scale;
 
 const WIFI_SSID: &str = env!("WIFI_SSID");
@@ -23,25 +20,12 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     EspLogger::initialize_default();
 
-    let peripherals = Peripherals::take().unwrap();
-    let sys_loop = EspSystemEventLoop::take()?;
-    let nvs = EspDefaultNvsPartition::take()?;
+    let peripherals = Peripherals::take()?;
+    let mut wifi = Wifi::new(peripherals.modem)?;
 
-    let mut wifi = BlockingWifi::wrap(
-        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
-        sys_loop,
-    )?;
+    wifi.connect(WIFI_SSID, WIFI_PASSWORD)?;
 
-    net::connect_wifi(&mut wifi, WIFI_SSID, WIFI_PASSWORD)?;
-
-    let config = &HttpConfiguration {
-        buffer_size: Some(1024),
-        buffer_size_tx: Some(1024),
-        crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
-        ..Default::default()
-    };
-
-    let mut client = HttpClient::wrap(EspHttpConnection::new(&config)?);
+    let mut client = net::create_http_client()?;
     let dt = peripherals.pins.gpio2;
     let sck = peripherals.pins.gpio3;
     let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();

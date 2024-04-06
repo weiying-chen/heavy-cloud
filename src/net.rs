@@ -3,36 +3,66 @@ use embedded_svc::http::client::Client as HttpClient;
 use embedded_svc::io::Write;
 use embedded_svc::utils::io;
 use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
+use esp_idf_hal::modem::Modem;
 use esp_idf_hal::sys::esp_wifi_set_max_tx_power;
-use esp_idf_svc::http::client::EspHttpConnection;
+use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi};
 use log::info;
 
-pub fn connect_wifi(
-    wifi: &mut BlockingWifi<EspWifi<'static>>,
-    wifi_ssid: &str,
-    wifi_password: &str,
-) -> Result<()> {
-    let wifi_configuration: Configuration = Configuration::Client(ClientConfiguration {
-        ssid: wifi_ssid.try_into().unwrap(),
-        bssid: None,
-        auth_method: AuthMethod::WPA2Personal,
-        password: wifi_password.try_into().unwrap(),
-        channel: None,
-    });
+pub struct Wifi<'a> {
+    wifi: BlockingWifi<EspWifi<'a>>,
+}
 
-    wifi.set_configuration(&wifi_configuration)?;
-    wifi.start()?;
-    info!("Wifi started");
+impl<'a> Wifi<'a> {
+    pub fn new(modem: Modem) -> Result<Self> {
+        let sys_loop = EspSystemEventLoop::take()?;
+        let nvs = EspDefaultNvsPartition::take()?;
 
-    unsafe { esp_wifi_set_max_tx_power(34) };
+        let wifi = BlockingWifi::wrap(
+            EspWifi::new(modem, sys_loop.clone(), Some(nvs))?,
+            sys_loop.clone(),
+        )?;
 
-    wifi.connect()?;
-    info!("Wifi connected");
-    wifi.wait_netif_up()?;
-    info!("Wifi netif up");
+        Ok(Self { wifi })
+    }
 
-    Ok(())
+    pub fn connect(&mut self, ssid: &str, password: &str) -> Result<()> {
+        let wifi_configuration = Configuration::Client(ClientConfiguration {
+            ssid: ssid.try_into().unwrap(),
+            bssid: None,
+            auth_method: AuthMethod::WPA2Personal,
+            password: password.try_into().unwrap(),
+            channel: None,
+        });
+
+        self.wifi.set_configuration(&wifi_configuration)?;
+        self.wifi.start()?;
+        info!("Wifi started");
+
+        unsafe { esp_wifi_set_max_tx_power(34) };
+
+        self.wifi.connect()?;
+        info!("Wifi connected");
+        self.wifi.wait_netif_up()?;
+        info!("Wifi netif up");
+
+        Ok(())
+    }
+}
+
+pub fn create_http_client() -> Result<HttpClient<EspHttpConnection>> {
+    let config = &HttpConfiguration {
+        buffer_size: Some(1024),
+        buffer_size_tx: Some(1024),
+        crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+        ..Default::default()
+    };
+
+    let client = HttpClient::wrap(EspHttpConnection::new(&config)?);
+
+    Ok(client)
 }
 
 pub fn post_request(

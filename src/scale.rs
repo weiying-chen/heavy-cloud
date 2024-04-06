@@ -1,11 +1,12 @@
+use anyhow::Result;
 use std::collections::VecDeque;
 
-use anyhow::Result;
 use esp_idf_svc::hal::{
     delay::{Ets, FreeRtos},
     gpio::{Input, InputPin, Output, OutputPin, Pin, PinDriver},
     peripheral::Peripheral,
 };
+
 use loadcell::{
     hx711::{NotReadyError, HX711},
     LoadCell,
