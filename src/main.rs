@@ -56,7 +56,7 @@ fn round() -> anyhow::Result<()> {
         // ("Content-Length", &content_length_header),
     ];
 
-    let mut http = Http::new(&headers)?;
+    let mut http = Http::new(&SUPABASE_URL, &headers)?;
     let mut iterations = 0;
 
     loop {
@@ -88,7 +88,7 @@ fn round() -> anyhow::Result<()> {
 
             // Maybe set the url in new() like axios
 
-            http.post(payload_bytes, SUPABASE_URL)?;
+            http.post(payload_bytes)?;
 
             log::info!("Http: success!");
         }

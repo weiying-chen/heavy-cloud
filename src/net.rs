@@ -53,12 +53,13 @@ impl<'a> Wifi<'a> {
 
 pub struct Http<'a> {
     client: HttpClient<EspHttpConnection>,
+    url: &'a str,
     headers: &'a [(&'a str, &'a str)], // Borrowed slice with a lifetime
 }
 
 impl<'a> Http<'a> {
     // Constructor that initializes the HTTP client with configuration
-    pub fn new(headers: &'a [(&'a str, &'a str)]) -> Result<Self> {
+    pub fn new(url: &'a str, headers: &'a [(&'a str, &'a str)]) -> Result<Self> {
         let config = &HttpConfiguration {
             buffer_size: Some(1024),
             buffer_size_tx: Some(1024),
@@ -68,16 +69,20 @@ impl<'a> Http<'a> {
 
         let client = HttpClient::wrap(EspHttpConnection::new(config)?);
 
-        Ok(Self { client, headers })
+        Ok(Self {
+            client,
+            url,
+            headers,
+        })
     }
 
-    pub fn post(&mut self, payload: &[u8], url: &str) -> Result<()> {
-        let mut request = self.client.post(url, self.headers)?; // Use the passed URL and headers directly
+    pub fn post(&mut self, payload: &[u8]) -> Result<()> {
+        let mut request = self.client.post(self.url, self.headers)?; // Use the passed URL and headers directly
 
         request.write_all(payload)?;
         request.flush()?;
 
-        info!("-> POST {}", url);
+        info!("-> POST {}", self.url);
 
         let mut response = request.submit()?;
         let status = response.status();
