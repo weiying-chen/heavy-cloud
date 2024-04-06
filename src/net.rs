@@ -1,7 +1,6 @@
 use anyhow::Result;
 use embedded_svc::http::client::Client as HttpClient;
 use embedded_svc::io::Write;
-use embedded_svc::utils::io;
 use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
 use esp_idf_hal::modem::Modem;
 use esp_idf_hal::sys::esp_wifi_set_max_tx_power;
@@ -52,53 +51,62 @@ impl<'a> Wifi<'a> {
     }
 }
 
-pub fn create_http_client() -> Result<HttpClient<EspHttpConnection>> {
-    let config = &HttpConfiguration {
-        buffer_size: Some(1024),
-        buffer_size_tx: Some(1024),
-        crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
-        ..Default::default()
-    };
-
-    let client = HttpClient::wrap(EspHttpConnection::new(&config)?);
-
-    Ok(client)
+pub struct Http {
+    client: HttpClient<EspHttpConnection>,
 }
 
-pub fn post_request(
-    client: &mut HttpClient<EspHttpConnection>,
-    payload: &[u8],
-    supabase_key: &str,
-    supabase_url: &str,
-) -> Result<()> {
-    let content_length_header = format!("{}", payload.len());
+impl Http {
+    // Constructor that initializes the HTTP client with configuration
+    pub fn new() -> Result<Self> {
+        let config = &HttpConfiguration {
+            buffer_size: Some(1024),
+            buffer_size_tx: Some(1024),
+            crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+            ..Default::default()
+        };
 
-    let headers = [
-        ("apikey", supabase_key),
-        ("Authorization", &format!("Bearer {}", supabase_key)),
-        ("Content-Type", "application/json"),
-        ("Prefer", "return=representation"),
-        ("Content-Length", &content_length_header),
-    ];
+        let client = HttpClient::wrap(EspHttpConnection::new(config)?);
 
-    let mut request = client.post(supabase_url, &headers)?;
+        Ok(Self { client })
+    }
 
-    request.write_all(payload)?;
-    request.flush()?;
+    // Method to perform a POST request
+    pub fn post_supabase(
+        &mut self,
+        payload: &[u8],
+        supabase_key: &str,
+        supabase_url: &str,
+    ) -> Result<()> {
+        let content_length_header = format!("{}", payload.len());
 
-    info!("-> POST {}", supabase_url);
+        let headers = [
+            ("apikey", supabase_key),
+            ("Authorization", &format!("Bearer {}", supabase_key)),
+            ("Content-Type", "application/json"),
+            ("Prefer", "return=representation"),
+            ("Content-Length", &content_length_header),
+        ];
 
-    let mut response = request.submit()?;
-    let status = response.status();
+        let mut request = self.client.post(supabase_url, &headers)?;
 
-    info!("<- {}", status);
+        request.write_all(payload)?;
+        request.flush()?;
 
-    let mut buf = [0u8; 1024];
-    let bytes_read = io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
+        info!("-> POST {}", supabase_url);
 
-    info!("Read {} bytes", bytes_read);
+        let mut response = request.submit()?;
+        let status = response.status();
 
-    while response.read(&mut buf)? > 0 {}
+        info!("<- {}", status);
 
-    Ok(())
+        let mut buf = [0u8; 1024];
+        let bytes_read =
+            embedded_svc::utils::io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
+
+        info!("Read {} bytes", bytes_read);
+
+        while response.read(&mut buf)? > 0 {}
+
+        Ok(())
+    }
 }

@@ -7,7 +7,7 @@ use log::info;
 mod critical_section;
 mod net;
 mod scale;
-use crate::net::Wifi;
+use crate::net::{Http, Wifi};
 use crate::scale::Scale;
 
 const WIFI_SSID: &str = env!("WIFI_SSID");
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     wifi.connect(WIFI_SSID, WIFI_PASSWORD)?;
 
-    let mut client = net::create_http_client()?;
+    let mut http = Http::new()?;
     let dt = peripherals.pins.gpio2;
     let sck = peripherals.pins.gpio3;
     let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
     let mut iterations = 0;
 
     loop {
-        log::info!("Waiting for the scale to be ready...");
+        log::info!("Preparing scale...");
         if scale.is_ready() {
             log::info!("Iteration {}", iterations);
 
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
             let payload_str = serde_json::to_string(&payload).unwrap();
             let payload_bytes = payload_str.as_bytes();
 
-            net::post_request(&mut client, payload_bytes, SUPABASE_KEY, SUPABASE_URL)?;
+            http.post_supabase(payload_bytes, SUPABASE_KEY, SUPABASE_URL)?;
         }
 
         FreeRtos::delay_ms(5000u32);
