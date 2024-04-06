@@ -23,7 +23,11 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take()?;
     let mut wifi = Wifi::new(peripherals.modem)?;
 
+    log::info!("Wifi: starting...");
+
     wifi.connect(WIFI_SSID, WIFI_PASSWORD)?;
+
+    log::info!("Wifi: success!");
 
     let mut http = Http::new()?;
     let dt = peripherals.pins.gpio2;
@@ -35,8 +39,9 @@ fn main() -> anyhow::Result<()> {
     let mut iterations = 0;
 
     loop {
-        log::info!("Preparing scale...");
+        log::info!("Scale: starting...");
         if scale.is_ready() {
+            log::info!("Scale: success!");
             log::info!("Iteration {}", iterations);
 
             let rounded_reading = scale.read_rounded().unwrap();
@@ -51,7 +56,11 @@ fn main() -> anyhow::Result<()> {
             let payload_str = serde_json::to_string(&payload).unwrap();
             let payload_bytes = payload_str.as_bytes();
 
+            log::info!("Http: starting...");
+
             http.post_supabase(payload_bytes, SUPABASE_KEY, SUPABASE_URL)?;
+
+            log::info!("Http: success!");
         }
 
         FreeRtos::delay_ms(5000u32);
