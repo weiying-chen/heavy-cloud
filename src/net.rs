@@ -49,6 +49,12 @@ impl<'a> Wifi<'a> {
 
         Ok(())
     }
+
+    pub fn disconnect(&mut self) -> Result<()> {
+        self.wifi.disconnect()?;
+
+        Ok(())
+    }
 }
 
 pub struct Http<'a> {

@@ -42,26 +42,30 @@ fn main() -> anyhow::Result<()> {
 
         log::info!("Wifi: success!");
 
-        // initi http
+        // // initi http
 
-        let headers = [
-            ("apikey", SUPABASE_KEY),
-            ("Authorization", &format!("Bearer {}", SUPABASE_KEY)),
-            ("Content-Type", "application/json"),
-            ("Prefer", "return=representation"),
-            // ("Content-Length", &content_length_header),
-        ];
+        // let headers = [
+        //     ("apikey", SUPABASE_KEY),
+        //     ("Authorization", &format!("Bearer {}", SUPABASE_KEY)),
+        //     ("Content-Type", "application/json"),
+        //     ("Prefer", "return=representation"),
+        //     // ("Content-Length", &content_length_header),
+        // ];
 
-        let mut http = Http::new(&SUPABASE_URL, &headers)?;
-        // let mut iterations = 0;
+        // let mut http = Http::new(&SUPABASE_URL, &headers)?;
+        // // let mut iterations = 0;
 
-        let payload_bytes = collect_readings(&mut scale)?;
+        // let payload_bytes = collect_readings(&mut scale)?;
 
-        http.post(&payload_bytes)?;
+        // http.post(&payload_bytes)?;
 
         info!("Shutting down in 5s...");
 
-        FreeRtos::delay_ms(5000u32);
+        wifi.disconnect()?;
+
+        // info!("Wifi disconnected!");
+
+        FreeRtos::delay_ms(10000u32);
     }
 
     Ok(())
