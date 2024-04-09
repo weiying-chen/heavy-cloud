@@ -3,7 +3,6 @@ use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::log::EspLogger;
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use log::info;
 
 mod critical_section;
 mod net;
@@ -22,7 +21,6 @@ fn main() -> anyhow::Result<()> {
     EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
-
     let dt = peripherals.pins.gpio2;
     let sck = peripherals.pins.gpio3;
     let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
@@ -32,37 +30,26 @@ fn main() -> anyhow::Result<()> {
     let mut wifi = Wifi::new(peripherals.modem)?;
 
     loop {
-        log::info!("Wifi: starting...");
-
         wifi.connect(WIFI_SSID, WIFI_PASSWORD)?;
-
-        log::info!("Wifi: success!");
 
         let headers = [
             ("apikey", SUPABASE_KEY),
             ("Authorization", &format!("Bearer {}", SUPABASE_KEY)),
             ("Content-Type", "application/json"),
             ("Prefer", "return=representation"),
-            // ("Content-Length", &content_length_header),
         ];
 
         let mut http = Http::new(&SUPABASE_URL, &headers)?;
-
-        let payload_bytes = get_readings(&mut scale)?;
+        let payload_bytes = read_scale(&mut scale)?;
 
         http.post(&payload_bytes)?;
-
-        info!("Shutting down in 5s...");
-
         wifi.disconnect()?;
-
-        info!("Wifi disconnected!");
 
         FreeRtos::delay_ms(10000u32);
     }
 }
 
-fn get_readings(scale: &mut Scale<'_, Gpio3, Gpio2>) -> anyhow::Result<Vec<u8>> {
+fn read_scale(scale: &mut Scale<'_, Gpio3, Gpio2>) -> anyhow::Result<Vec<u8>> {
     let mut readings = Vec::new();
 
     loop {
@@ -73,6 +60,7 @@ fn get_readings(scale: &mut Scale<'_, Gpio3, Gpio2>) -> anyhow::Result<Vec<u8>> 
 
             let rounded_reading = scale.read_rounded().unwrap();
             let message = format!("Weight: {} g", rounded_reading);
+
             log::info!("{}", message);
 
             let payload = serde_json::json!({ "content": message });
@@ -80,7 +68,6 @@ fn get_readings(scale: &mut Scale<'_, Gpio3, Gpio2>) -> anyhow::Result<Vec<u8>> 
             let mut payload_bytes = payload_str.into_bytes();
 
             payload_bytes.push(b'\n');
-
             readings.extend(payload_bytes);
 
             break;

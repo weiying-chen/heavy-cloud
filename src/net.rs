@@ -38,20 +38,26 @@ impl<'a> Wifi<'a> {
 
         self.wifi.set_configuration(&wifi_configuration)?;
         self.wifi.start()?;
-        // info!("Wifi started");
+
+        info!("Wifi started");
 
         unsafe { esp_wifi_set_max_tx_power(34) };
 
         self.wifi.connect()?;
-        // info!("Wifi connected");
+
+        info!("Wifi connected");
+
         self.wifi.wait_netif_up()?;
-        // info!("Wifi netif up");
+
+        info!("Wifi netif up");
 
         Ok(())
     }
 
     pub fn disconnect(&mut self) -> Result<()> {
         self.wifi.disconnect()?;
+
+        info!("Wifi disconnected");
 
         Ok(())
     }
