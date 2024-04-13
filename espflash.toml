@@ -1,2 +1,2 @@
 partition_table = "partitions.csv"
-baudrate = 460800
+baudrate = 921600
