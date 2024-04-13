@@ -1,9 +1,9 @@
 use esp_idf_hal::gpio::{Gpio2, Gpio3};
 use esp_idf_hal::prelude::Peripherals;
-use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::log::EspLogger;
-use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-
+use esp_idf_sys::{self as _};
+use log::info;
+use std::time::Duration; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 mod critical_section;
 mod net;
 mod scale;
@@ -45,7 +45,12 @@ fn main() -> anyhow::Result<()> {
         http.post(&payload_bytes)?;
         wifi.disconnect()?;
 
-        FreeRtos::delay_ms(10000u32);
+        unsafe {
+            info!("Will sleep for 10 seconds...");
+            esp_idf_sys::esp_deep_sleep(Duration::from_secs(10).as_micros() as u64);
+        }
+
+        // thread::sleep(Duration::from_secs(5));
     }
 }
 
