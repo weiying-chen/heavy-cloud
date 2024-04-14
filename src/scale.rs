@@ -53,6 +53,10 @@ where
         self.load_sensor.tare(times);
     }
 
+    pub fn get_offset(&self) -> i32 {
+        self.load_sensor.get_offset()
+    }
+
     // pub fn read_scaled(&mut self) -> Result<f32, NotReadyError> {
     //     self.load_sensor.read_scaled()
     // }

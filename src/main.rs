@@ -16,6 +16,9 @@ const SUPABASE_KEY: &str = env!("SUPABASE_KEY");
 const SUPABASE_URL: &str = env!("SUPABASE_URL");
 const LOAD_SENSOR_SCALING: f32 = 0.0027;
 
+// #[link_section = ".rtc.data"]
+// static mut TARE_OFFSET: i32 = 0;
+
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     EspLogger::initialize_default();
@@ -25,7 +28,15 @@ fn main() -> anyhow::Result<()> {
     let sck = peripherals.pins.gpio3;
     let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
 
-    scale.tare(32);
+    // unsafe {
+    //     if TARE_OFFSET != 0 {
+    //         scale.set_offset(TARE_OFFSET);
+    //     } else {
+    //         scale.tare(32);
+    //         TARE_OFFSET = scale.get_offset();
+    //     }
+    //     warn!("TARE_OFFSET after check: {}", TARE_OFFSET);
+    // }
 
     let mut wifi = Wifi::new(peripherals.modem)?;
 
@@ -49,8 +60,6 @@ fn main() -> anyhow::Result<()> {
             info!("Will sleep for 10 seconds...");
             esp_idf_sys::esp_deep_sleep(Duration::from_secs(10).as_micros() as u64);
         }
-
-        // thread::sleep(Duration::from_secs(5));
     }
 }
 
