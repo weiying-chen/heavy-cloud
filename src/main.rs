@@ -2,22 +2,21 @@ use esp_idf_hal::gpio::{Gpio2, Gpio3};
 use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::log::EspLogger;
 use esp_idf_sys::{self as _};
-use log::info;
+use log::{info, warn};
 use std::time::Duration; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 mod critical_section;
 mod net;
 mod scale;
 use crate::net::{Http, Wifi};
 use crate::scale::Scale;
-
 const WIFI_SSID: &str = env!("WIFI_SSID");
 const WIFI_PASSWORD: &str = env!("WIFI_PASS");
 const SUPABASE_KEY: &str = env!("SUPABASE_KEY");
 const SUPABASE_URL: &str = env!("SUPABASE_URL");
 const LOAD_SENSOR_SCALING: f32 = 0.0027;
 
-// #[link_section = ".rtc.data"]
-// static mut TARE_OFFSET: i32 = 0;
+#[link_section = ".rtc.data"]
+static mut TARE_OFFSET: i32 = 0;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -28,15 +27,19 @@ fn main() -> anyhow::Result<()> {
     let sck = peripherals.pins.gpio3;
     let mut scale = Scale::new(sck, dt, LOAD_SENSOR_SCALING).unwrap();
 
-    // unsafe {
-    //     if TARE_OFFSET != 0 {
-    //         scale.set_offset(TARE_OFFSET);
-    //     } else {
-    //         scale.tare(32);
-    //         TARE_OFFSET = scale.get_offset();
-    //     }
-    //     warn!("TARE_OFFSET after check: {}", TARE_OFFSET);
-    // }
+    unsafe {
+        warn!("TARE_OFFSET before check: {}", TARE_OFFSET);
+
+        if TARE_OFFSET == 0 {
+            scale.tare(32);
+
+            TARE_OFFSET = scale.get_offset();
+        } else {
+            scale.set_offset(TARE_OFFSET);
+        }
+
+        warn!("TARE_OFFSET after check: {}", TARE_OFFSET);
+    }
 
     let mut wifi = Wifi::new(peripherals.modem)?;
 

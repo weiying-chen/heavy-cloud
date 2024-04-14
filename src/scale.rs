@@ -53,6 +53,10 @@ where
         self.load_sensor.tare(times);
     }
 
+    pub fn set_offset(&mut self, offset: i32) {
+        self.load_sensor.set_offset(offset);
+    }
+
     pub fn get_offset(&self) -> i32 {
         self.load_sensor.get_offset()
     }
