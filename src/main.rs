@@ -60,8 +60,8 @@ fn main() -> anyhow::Result<()> {
         wifi.disconnect()?;
 
         unsafe {
-            info!("Will sleep for 30 minutes...");
-            esp_idf_sys::esp_deep_sleep(Duration::from_secs(1800).as_micros() as u64);
+            info!("Will sleep for 10 minutes...");
+            esp_idf_sys::esp_deep_sleep(Duration::from_secs(10).as_micros() as u64);
         }
     }
 }
