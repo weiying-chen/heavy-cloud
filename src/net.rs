@@ -61,6 +61,10 @@ impl<'a> Wifi<'a> {
 
         Ok(())
     }
+
+    pub fn is_connected(&self) -> Result<bool> {
+        self.wifi.is_connected().map_err(|e| anyhow::Error::new(e))
+    }
 }
 
 pub struct Http<'a> {

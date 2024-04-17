@@ -1,8 +1,9 @@
-use esp_idf_hal::gpio::{Gpio2, Gpio3};
+use esp_idf_hal::gpio::{Gpio1, Gpio2, Gpio3, Output, PinDriver};
 use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::log::EspLogger;
 use esp_idf_sys::{self as _};
 use log::{info, warn};
+use std::thread;
 use std::time::Duration; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 mod critical_section;
 mod net;
@@ -42,9 +43,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut wifi = Wifi::new(peripherals.modem)?;
+    let mut led_pin = PinDriver::output(peripherals.pins.gpio1).unwrap();
 
     loop {
         wifi.connect(WIFI_SSID, WIFI_PASSWORD)?;
+
+        show_wifi_status(&wifi, &mut led_pin)?;
 
         let headers = [
             ("apikey", SUPABASE_KEY),
@@ -56,14 +60,29 @@ fn main() -> anyhow::Result<()> {
         let mut http = Http::new(&SUPABASE_URL, &headers)?;
         let payload_bytes = read_scale(&mut scale)?;
 
+        thread::sleep(Duration::from_secs(5));
+
         http.post(&payload_bytes)?;
         wifi.disconnect()?;
+
+        show_wifi_status(&wifi, &mut led_pin)?;
 
         unsafe {
             info!("Will sleep for 10 minutes...");
             esp_idf_sys::esp_deep_sleep(Duration::from_secs(10).as_micros() as u64);
         }
+
+        // thread::sleep(Duration::from_secs(5));
     }
+}
+
+fn show_wifi_status(wifi: &Wifi, led_pin: &mut PinDriver<'_, Gpio1, Output>) -> anyhow::Result<()> {
+    if wifi.is_connected()? {
+        led_pin.set_high()?;
+    } else {
+        led_pin.set_low()?;
+    }
+    Ok(())
 }
 
 fn read_scale(scale: &mut Scale<'_, Gpio3, Gpio2>) -> anyhow::Result<Vec<u8>> {
